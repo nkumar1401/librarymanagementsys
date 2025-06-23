@@ -4,26 +4,20 @@ from .models import *
 
 User = get_user_model()
 
-
 class Userserializer(serializers.ModelSerializer):
     class Meta:
         model = User
         fields = '__all__'
-
-
 
 class Authorserializer(serializers.ModelSerializer):
     class Meta:
         model = Author
         fields = '__all__'
 
-
-
 class Genreserializer(serializers.ModelSerializer):
     class Meta:
         model = Genre
         fields = '__all__'
-
 
 class BookReadserializer(serializers.ModelSerializer):
     author = Authorserializer()
@@ -31,15 +25,12 @@ class BookReadserializer(serializers.ModelSerializer):
 
     class Meta:
         model = Book
-        fields = '  __all__'
-
+        fields = '__all__'
 
 class BookWriteserializer(serializers.ModelSerializer):
     class Meta:
         model = Book
-        fields = '__all__ '
-
-
+        fields = '__all__'
 
 class BorrowRequestserializer(serializers.ModelSerializer):
     book = BookReadserializer(read_only=True)
@@ -47,10 +38,8 @@ class BorrowRequestserializer(serializers.ModelSerializer):
 
     class Meta:
         model = BorrowRequest
-        fields = ' __all__'
+        fields = '__all__'
         read_only_fields = ['status', 'requested_at', 'approved_at', 'returned_at']
-
-
 
 class BookReviewserializer(serializers.ModelSerializer):
     user = Userserializer(read_only=True)
