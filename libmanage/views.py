@@ -59,16 +59,28 @@ def genrelistcreate(request):
 def booklistcreate(request):
     if request.method == 'GET':
         books = Book.objects.all()
+        genre = request.GET.get('genre')
+        author = request.GET.get('author')
+        title = request.GET.get('title')
+
+        if genre:
+            books = books.filter(genres__name__icontains=genre)
+        if author:
+            books = books.filter(author__name__icontains=author)
+        if title:
+            books = books.filter(title__icontains=title)
+
         serializer = BookReadserializer(books, many=True)
         return Response(serializer.data)
 
     if request.user.role != 'LIBRARIAN':
-        return Response({'detail': 'only lib can '}, status=status.HTTP_403_FORBIDDEN)
+        return Response({'detail': 'Only librarians can add books.'}, status=status.HTTP_403_FORBIDDEN)
 
     serializer = BookWriteserializer(data=request.data)
     if serializer.is_valid():
         serializer.save()
         return Response(serializer.data, status=status.HTTP_201_CREATED)
+
     return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
 
 
