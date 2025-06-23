@@ -1,1 +1,10 @@
-venv/
+myenv/
+__pycache__/
+*.pyc
+db.sqlite3
+.env
+*.log
+.vscode/
+**/migrations/*
+!*/migrations/__init__.py
+myenv/
