@@ -1,15 +1,14 @@
 from django.db import models
 from django.db import models
 from django.contrib.auth.models import AbstractUser
-from django.utils.translation import gettext_lazy as _
 
 # Create your models here.
 
 
 class User(AbstractUser):
     class Role(models.TextChoices):
-        STUDENT = 'STUDENT', _('Student')
-        LIBRARIAN = 'LIBRARIAN',  _('Librarian')
+        STUDENT = 'STUDENT', 'Student'
+        LIBRARIAN = 'LIBRARIAN',  'Librarian'
 
     role = models.CharField(max_length=10, choices=Role.choices, default=Role.STUDENT)
 
@@ -39,10 +38,10 @@ class Book(models.Model):
 
 class BorrowRequest(models.Model):
     class Status(models.TextChoices):
-        PENDING = 'PENDING', _('Pending')
-        APPROVED = 'APPROVED', _('Approved')
-        REJECTED = 'REJECTED', _('Rejected')
-        RETURNED = 'RETURNED', _('Returned')
+        PENDING = 'PENDING', 'Pending'
+        APPROVED = 'APPROVED', 'Approved'
+        REJECTED = 'REJECTED', 'Rejected'
+        RETURNED = 'RETURNED', 'Returned'
 
     book = models.ForeignKey(Book, on_delete=models.CASCADE, related_name='borrow_requests')
     user = models.ForeignKey(User, on_delete=models.CASCADE, related_name='borrow_requests')
