@@ -13,4 +13,19 @@ class Useradmin(admin.ModelAdmin):
 class Authoradmin(admin.ModelAdmin):
     list_display=('name','bio')
     search_fields = ('name',)
+@admin.register(BookReview)
+class BookReviewadmin(admin.ModelAdmin):
+    list_display = ('user', 'book', 'rating', 'created_at')
+    search_fields = ('user__username', 'book__title')
+    list_filter = ('rating',)    
 
+@admin.register(Book)
+class Bookadmin (admin.ModelAdmin):
+    list_display = ('title', 'author', 'ISBN', 'total_copies', 'available_copies')
+    search_fields = ('title', 'author__name', 'ISBN')
+    list_filter = ('author', 'genres')
+
+@admin.register(Genre)
+class Genreadmin(admin.ModelAdmin):
+    list_display = ('name',)
+    search_fields = ('name',)

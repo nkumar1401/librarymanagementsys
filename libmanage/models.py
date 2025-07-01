@@ -1,9 +1,7 @@
 from django.db import models
-from django.db import models
 from django.contrib.auth.models import AbstractUser
 
 # Create your models here.
-
 
 class User(AbstractUser):
     class Role(models.TextChoices):
@@ -11,6 +9,8 @@ class User(AbstractUser):
         LIBRARIAN = 'LIBRARIAN',  'Librarian'
 
     role = models.CharField(max_length=10, choices=Role.choices, default=Role.STUDENT)
+    def __str__(self):
+        return self.username
 
 
 
@@ -23,6 +23,8 @@ class Author(models.Model):
 
 class Genre(models.Model):
     name = models.CharField(max_length=50)
+    def __str__(self):
+        return self.name
 
 
 class Book(models.Model):
@@ -49,6 +51,8 @@ class BorrowRequest(models.Model):
     requested_at = models.DateTimeField(auto_now_add=True)
     approved_at = models.DateTimeField(null=True, blank=True)
     returned_at = models.DateTimeField(null=True, blank=True)
+    def __str__(self):
+        return f'{self.user.username} - {self.book.title} ({self.status})'
 
 
 
