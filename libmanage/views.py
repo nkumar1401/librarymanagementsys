@@ -1,57 +1,44 @@
-from rest_framework.decorators import api_view ,permission_classes
+from rest_framework.views import APIView
+from rest_framework.generics import ListCreateAPIView, RetrieveUpdateDestroyAPIView
 from rest_framework.response import Response
+from rest_framework.permissions import IsAuthenticated, AllowAny
+from rest_framework import status
+from rest_framework.exceptions import PermissionDenied
+from django.shortcuts import get_object_or_404
+from django.utils import timezone
+from rest_framework_simplejwt.tokens import RefreshToken
+
 from .models import *
 from .serializers import *
-from rest_framework import status
-from django.shortcuts import get_object_or_404
-from rest_framework.permissions import IsAuthenticated ,AllowAny
-from django.utils import timezone
+from .permission import IsLibrarian
 
 
+class AuthorListCreateView(ListCreateAPIView):
+    queryset = Author.objects.all()
+    serializer_class = Authorserializer
+    permission_classes = [IsAuthenticated]
 
-
-@api_view(['GET', 'POST'])
-def authorlistcreate(request):
-    if request.method == 'GET':
-        authors = Author.objects.all()
-        serializer = Authorserializer(authors, many=True)
-        return Response(serializer.data)
-
-    if request.user.role != 'LIBRARIAN':
-        return Response({'detail': 'only librarian can add'}, status=status.HTTP_403_FORBIDDEN)
-
-    serializer = Authorserializer(data=request.data)
-    if serializer.is_valid():
-        serializer.save()
-        return Response(serializer.data, status=status.HTTP_201_CREATED)
-    return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
-
-
-
-@api_view(['GET', 'POST'])
-def genrelistcreate(request):
-    if request.method == 'GET':
-        genres = Genre.objects.all()
-        serializer = Genreserializer(genres, many=True)
-        return Response(serializer.data)
-    
-    if request.user.role != 'LIBRARIAN':
-        return Response({'detail': 'only librarian can add genre'}, status=status.HTTP_403_FORBIDDEN)
-
-    serializer = Genreserializer(data=request.data)
-    if serializer.is_valid():
+    def perform_create(self, serializer):
+        if not IsLibrarian().has_permission(self.request, self):
+            raise PermissionDenied('Only librarians can add authors.')
         serializer.save()
 
-        return Response(serializer.data, status=status.HTTP_201_CREATED)
-    
-    return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+
+class GenreListCreateView(ListCreateAPIView):
+    queryset = Genre.objects.all()
+    serializer_class = Genreserializer
+    permission_classes = [IsAuthenticated]
+
+    def perform_create(self, serializer):
+        if not IsLibrarian().has_permission(self.request, self):
+            raise PermissionDenied('Only librarians can add genres.')
+        serializer.save()
 
 
+class BookListCreateView(APIView):
+    permission_classes = [IsAuthenticated]
 
-
-@api_view(['GET', 'POST'])
-def booklistcreate(request):
-    if request.method == 'GET':
+    def get(self, request):
         books = Book.objects.all()
         genre = request.GET.get('genre')
         author = request.GET.get('author')
@@ -67,43 +54,42 @@ def booklistcreate(request):
         serializer = BookReadserializer(books, many=True)
         return Response(serializer.data)
 
-    if request.user.role != 'LIBRARIAN':
-        return Response({'detail': 'Only librarians can add books.'}, status=status.HTTP_403_FORBIDDEN)
-
-    serializer = BookWriteserializer(data=request.data)
-    if serializer.is_valid():
-        serializer.save()
-        return Response(serializer.data, status=status.HTTP_201_CREATED)
-
-    return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
-
-@api_view(['GET', 'PUT','DELETE'])
-def bookdetail(request, pk):
-    book = get_object_or_404(Book, pk=pk)
-    if request.method =='GET':
-        serializer = BookReadserializer(book)
-        return Response(serializer.data)
-    
-    if request.user.role != 'LIBRARIAN':
-        return Response({'detail': 'only librarian can '}, status=status.HTTP_400_BAD_REQUEST)
-
-    if request.method == 'PUT':
-        serializer = BookWriteserializer(book, data=request.data)
+    def post(self, request):
+        if not IsLibrarian().has_permission(request, self):
+            raise PermissionDenied('Only librarians can add books.')
+        serializer = BookWriteserializer(data=request.data)
         if serializer.is_valid():
             serializer.save()
-            return Response(serializer.data)
+            return Response(serializer.data, status=status.HTTP_201_CREATED)
         return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
 
-    if request.method == 'DELETE':
-        book.delete()
-        return Response(status=204)
 
-@api_view(['GET', 'POST'])
-@permission_classes([IsAuthenticated])
-def borrowlistcreate(request):
-    user = request.user
+class BookDetailView(RetrieveUpdateDestroyAPIView):
+    queryset = Book.objects.all()
+    lookup_field = 'pk'
+    permission_classes = [IsAuthenticated]
 
-    if request.method == 'GET':
+    def get_serializer_class(self):
+        if self.request.method == 'GET':
+            return BookReadserializer
+        return BookWriteserializer
+
+    def update(self, request, *args, **kwargs):
+        if not IsLibrarian().has_permission(request, self):
+            raise PermissionDenied('Only librarians can update books.')
+        return super().update(request, *args, **kwargs)
+
+    def destroy(self, request, *args, **kwargs):
+        if not IsLibrarian().has_permission(request, self):
+            raise PermissionDenied('Only librarians can delete books.')
+        return super().destroy(request, *args, **kwargs)
+
+
+class BorrowListCreateView(APIView):
+    permission_classes = [IsAuthenticated]
+
+    def get(self, request):
+        user = request.user
         if user.role == 'LIBRARIAN':
             borrows = BorrowRequest.objects.all()
         else:
@@ -111,88 +97,92 @@ def borrowlistcreate(request):
         serializer = BorrowRequestserializer(borrows, many=True)
         return Response(serializer.data)
 
-    serializer = BorrowRequestserializer(data=request.data)
-    if serializer.is_valid():
-        serializer.save(user=user)
-        return Response(serializer.data, status=status.HTTP_201_CREATED)
-    return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
-
-@api_view(['PATCH'])
-@permission_classes([IsAuthenticated])
-def borrowapprove(request, pk):
-    if request.user.role != 'LIBRARIAN':
-        return Response({"detail": "Only librarians can approve requests."}, status=status.HTTP_403_FORBIDDEN)
-
-    borrow = get_object_or_404(BorrowRequest, pk=pk)
-    if borrow.status != 'PENDING':
-        return Response({"detail": "Already processed."}, status=status.HTTP_400_BAD_REQUEST)
-
-    borrow.status = 'APPROVED'
-    borrow.approved_at = timezone.now()
-    borrow.save()
-    return Response({"status": "approved"})
+    def post(self, request):
+        serializer = BorrowRequestserializer(data=request.data)
+        if serializer.is_valid():
+            serializer.save(user=request.user)
+            return Response(serializer.data, status=status.HTTP_201_CREATED)
+        return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
 
 
-@api_view(['PATCH'])
-@permission_classes([IsAuthenticated])
-def borrowreject(request, pk):
-    if request.user.role != 'LIBRARIAN':
-        return Response({"detail": "Only librarians can reject requests."}, status=status.HTTP_403_FORBIDDEN)
+class BorrowApproveView(APIView):
+    permission_classes = [IsAuthenticated]
 
-    borrow = get_object_or_404(BorrowRequest, pk=pk)
-    if borrow.status != 'PENDING':
-        return Response({"detail": "Already processed."}, status=  status.HTTP_400_BAD_REQUEST)
+    def patch(self, request, pk):
+        if request.user.role != 'LIBRARIAN':
+            raise PermissionDenied('Only librarians can approve requests.')
 
-    borrow.status = 'REJECTED'
-    borrow.save()
-    return Response({"status": "rejected"})
+        borrow = get_object_or_404(BorrowRequest, pk=pk)
+        if borrow.status != 'PENDING':
+            return Response({'detail': 'Already processed.'}, status=400)
 
-
-@api_view(['PATCH'])
-@permission_classes([IsAuthenticated])
-def borrowreturn(request, pk):
-    borrow = get_object_or_404(BorrowRequest, pk=pk)
-    if borrow.status != 'APPROVED':
-        return Response({"detail": "Only approved books can be returned."}, status=status.HTTP_400_BAD_REQUEST)
-
-    borrow.status = 'RETURNED'
-    borrow.returned_at = timezone.now()
-    borrow.save()
-    return Response({"status": "returned"})
+        borrow.status = 'APPROVED'
+        borrow.approved_at = timezone.now()
+        borrow.save()
+        return Response({'status': 'approved'})
 
 
-from rest_framework_simplejwt.tokens import RefreshToken 
-@api_view(['POST'])
-@permission_classes([AllowAny])
-def registeruser(request):
-    serializer = Userserializer(data=request.data)
-    if serializer.is_valid():
-        user = serializer.save()
-        refresh = RefreshToken.for_user(user)
-        return Response({
-            'user': Userserializer(user).data,
-            'refresh': str(refresh),
-            'access': str(refresh.access_token),
-        }, status=status.HTTP_201_CREATED)
-    return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+class BorrowRejectView(APIView):
+    permission_classes = [IsAuthenticated]
+
+    def patch(self, request, pk):
+        if request.user.role != 'LIBRARIAN':
+            raise PermissionDenied('Only librarians can reject requests.')
+
+        borrow = get_object_or_404(BorrowRequest, pk=pk)
+        if borrow.status != 'PENDING':
+            return Response({'detail': 'Already processed.'}, status=400)
+
+        borrow.status = 'REJECTED'
+        borrow.save()
+        return Response({'status': 'rejected'})
 
 
+class BorrowReturnView(APIView):
+    permission_classes = [IsAuthenticated]
+
+    def patch(self, request, pk):
+        borrow = get_object_or_404(BorrowRequest, pk=pk)
+        if borrow.status != 'APPROVED':
+            return Response({'detail': 'Only approved books can be returned.'}, status=400)
+
+        borrow.status = 'RETURNED'
+        borrow.returned_at = timezone.now()
+        borrow.save()
+        return Response({'status': 'returned'})
 
 
-@api_view(['POST'])
-@permission_classes([IsAuthenticated])
-def reviewcreate(request, book_id):
-    data = request.data.copy()
-    data['book'] = book_id
-    serializer = BookReviewserializer(data=data)
-    if serializer.is_valid():
-        serializer.save(user=request.user)
-        return Response(serializer.data, status=status.HTTP_201_CREATED)
-    return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+class RegisterUserView(APIView):
+    permission_classes = [AllowAny]
+
+    def post(self, request):
+        serializer = Userserializer(data=request.data)
+        if serializer.is_valid():
+            user = serializer.save()
+            refresh = RefreshToken.for_user(user)
+            return Response({
+                'user': Userserializer(user).data,
+                'refresh': str(refresh),
+                'access': str(refresh.access_token),
+            }, status=status.HTTP_201_CREATED)
+        return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
 
 
-@api_view(['GET'])
-def reviewlist(request,id):
-    reviews = BookReview.objects.filter(book_id=id)
-    serializer = BookReviewserializer(reviews, many=True)
-    return Response(serializer.data)
+class ReviewCreateView(APIView):
+    permission_classes = [IsAuthenticated]
+
+    def post(self, request, book_id):
+        data = request.data.copy()
+        data['book'] = book_id
+        serializer = BookReviewserializer(data=data)
+        if serializer.is_valid():
+            serializer.save(user=request.user)
+            return Response(serializer.data, status=status.HTTP_201_CREATED)
+        return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+
+
+class ReviewListView(APIView):
+    def get(self, request, id):
+        reviews = BookReview.objects.filter(book_id=id)
+        serializer = BookReviewserializer(reviews, many=True)
+        return Response(serializer.data)
