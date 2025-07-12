@@ -1,18 +1,12 @@
-from rest_framework.decorators import api_view, permission_classes
+from rest_framework.decorators import api_view ,permission_classes
 from rest_framework.response import Response
 from .models import *
-from rest_framework import status, filters
-from rest_framework.permissions import IsAuthenticated, AllowAny
-from django.utils import timezone
-from django.shortcuts import get_object_or_404
-
-from rest_framework_simplejwt.views import TokenObtainPairView, TokenRefreshView
-from rest_framework_simplejwt.tokens import RefreshToken
-from rest_framework.permissions import AllowAny
-
-
 from .serializers import *
-from .permission import *
+from rest_framework import status
+from django.shortcuts import get_object_or_404
+from rest_framework.permissions import IsAuthenticated ,AllowAny
+from django.utils import timezone
+
 
 
 
@@ -40,7 +34,7 @@ def genrelistcreate(request):
         genres = Genre.objects.all()
         serializer = Genreserializer(genres, many=True)
         return Response(serializer.data)
-
+    
     if request.user.role != 'LIBRARIAN':
         return Response({'detail': 'only librarian can add genre'}, status=status.HTTP_403_FORBIDDEN)
 
@@ -83,7 +77,6 @@ def booklistcreate(request):
 
     return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
 
-
 @api_view(['GET', 'PUT','DELETE'])
 def bookdetail(request, pk):
     book = get_object_or_404(Book, pk=pk)
@@ -105,7 +98,6 @@ def bookdetail(request, pk):
         book.delete()
         return Response(status=204)
 
-
 @api_view(['GET', 'POST'])
 @permission_classes([IsAuthenticated])
 def borrowlistcreate(request):
@@ -124,7 +116,6 @@ def borrowlistcreate(request):
         serializer.save(user=user)
         return Response(serializer.data, status=status.HTTP_201_CREATED)
     return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
-
 
 @api_view(['PATCH'])
 @permission_classes([IsAuthenticated])
@@ -170,8 +161,7 @@ def borrowreturn(request, pk):
     return Response({"status": "returned"})
 
 
-
-
+from rest_framework_simplejwt.tokens import RefreshToken 
 @api_view(['POST'])
 @permission_classes([AllowAny])
 def registeruser(request):
