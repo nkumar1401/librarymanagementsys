@@ -54,12 +54,12 @@ class BorrowRequest(models.Model):
     def __str__(self):
         return f'{self.user.username} - {self.book.title} ({self.status})'
 
-
+from django.core.validators import MaxValueValidator ,MinValueValidator 
 
 class BookReview(models.Model):
     user = models.ForeignKey(User, on_delete=models.CASCADE, related_name='reviews')
     book = models.ForeignKey(Book, on_delete=models.CASCADE, related_name='reviews')
-    rating = models.IntegerField(choices=[(i, str(i)) for i in range(1, 6)])
+    rating = models.IntegerField(MinValueValidator(1),MaxValueValidator(5))
     comment = models.TextField()
     created_at = models.DateTimeField(auto_now_add=True)
 
